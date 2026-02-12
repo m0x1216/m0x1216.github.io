@@ -1,6 +1,6 @@
 ---
 title: "HackTheBox Machine - Authority"
-date: 2026-02-11 10:00:00 -0600
+date: 2026-02-11 20:00:00 -0600
 categories: [Writeups, HachTheBox]
 tags: [HTB Easy Machines, Active Directory, SeMachineAccountPrivilege, ESC1, nmap, dig, netexec, smbmap, smbclient, ansible2john, ansible-vault, evil-winrm-py, responder, certipy-ad, impacket-lookupsid, impacket-addcomputer]
 ---
@@ -379,27 +379,27 @@ Ansible/PWM/ansible_inventory:ansible_password: Welcome1
 Ansible/PWM/templates/tomcat-users.xml.j2:<user username="admin" password="T0mc@tAdm1n" roles="manager-gui"/>  
 Ansible/PWM/templates/tomcat-users.xml.j2:<user username="robot" password="T0mc@tR00t" roles="manager-script"/>
 Ansible/ADCS/tox.ini:passenv = namespace image tag DOCKER_HOST
-Ansible/ADCS/tasks/generate_ca_certs.yml:    privatekey_passphrase: "{{ ca_passphrase }}"
-Ansible/ADCS/tasks/generate_ca_certs.yml:    privatekey_passphrase: "{{ ca_passphrase }}"
+Ansible/ADCS/tasks/generate_ca_certs.yml:    privatekey_passphrase: "\{\{ ca_passphrase \}\}"
+Ansible/ADCS/tasks/generate_ca_certs.yml:    privatekey_passphrase: "\{\{ ca_passphrase \}\}"
 Ansible/ADCS/tasks/assert.yml:- name: Test if ca_passphrase is set correctly
 Ansible/ADCS/tasks/assert.yml:      - ca_passphrase is defined
 Ansible/ADCS/tasks/assert.yml:      - ca_passphrase is string
 Ansible/ADCS/tasks/requests.yml:        - name: Generate requested key (passphrase set)
-Ansible/ADCS/tasks/requests.yml:            passphrase: "{{ request.passphrase }}"
+Ansible/ADCS/tasks/requests.yml:            passphrase: "\{\{ request.passphrase \}\}"
 Ansible/ADCS/tasks/requests.yml:            - request.passphrase is defined
 Ansible/ADCS/tasks/requests.yml:        - name: Generate requested key (passphrase not set)
 Ansible/ADCS/tasks/requests.yml:            - request.passphrase is not defined
-Ansible/ADCS/tasks/requests.yml:        privatekey_passphrase: "{{ request.passphrase | default(omit) }}"
-Ansible/ADCS/tasks/init_ca.yml:    passphrase: "{{ ca_passphrase }}"
+Ansible/ADCS/tasks/requests.yml:        privatekey_passphrase: "\{\{ request.passphrase | default(omit) \}\}"
+Ansible/ADCS/tasks/init_ca.yml:    passphrase: "\{\{ ca_passphrase \}\}"
 Ansible/ADCS/defaults/main.yml:# A passphrase for the CA key.
 Ansible/ADCS/defaults/main.yml:ca_passphrase: SuP3rS3creT
 Ansible/ADCS/defaults/main.yml:#     passphrase: S3creT
 Ansible/ADCS/defaults/main.yml:#     passphrase: S3creT
-Ansible/ADCS/vars/main.yml:  -config {{ ca_openssl_config_file }} -key {{ ca_passphrase }}
-Ansible/ADCS/vars/main.yml:  -config {{ ca_openssl_config_file }} -key {{ ca_passphrase }}
-Ansible/ADCS/vars/main.yml:  -config {{ ca_openssl_config_file }} -key {{ ca_passphrase }}
-Ansible/ADCS/vars/main.yml:  -config {{ ca_openssl_config_file }} -key {{ ca_passphrase }}
-Ansible/ADCS/vars/main.yml:  -config {{ ca_openssl_config_file }} -key {{ ca_passphrase }}
+Ansible/ADCS/vars/main.yml:  -config \{\{ ca_openssl_config_file \}\} -key \{\{ ca_passphrase \}\}
+Ansible/ADCS/vars/main.yml:  -config \{\{ ca_openssl_config_file \}\} -key \{\{ ca_passphrase \}\}
+Ansible/ADCS/vars/main.yml:  -config \{\{ ca_openssl_config_file \}\} -key \{\{ ca_passphrase \}\}
+Ansible/ADCS/vars/main.yml:  -config \{\{ ca_openssl_config_file \}\} -key \{\{ ca_passphrase \\}}
+Ansible/ADCS/vars/main.yml:  -config \{\{ ca_openssl_config_file \}\} -key \{\{ ca_passphrase \}\}
 Ansible/ADCS/README.md:# A passphrase for the CA key.
 Ansible/ADCS/README.md:ca_passphrase: SuP3rS3creT
 Ansible/ADCS/README.md:#     passphrase: S3creT
@@ -414,20 +414,20 @@ Ansible/ADCS/templates/openssl.cnf.j2:challengePassword_max		= 20
 Ansible/LDAP/tasks/main.yml:    - passwd
 Ansible/LDAP/tasks/main.yml:- name: Query SSSD in pam.d/password-auth
 Ansible/LDAP/tasks/main.yml:    dest: /etc/pam.d/password-auth
-Ansible/LDAP/tasks/main.yml:        line: "auth        sufficient    pam_sss.so use_first_pass" }
-Ansible/LDAP/tasks/main.yml:    - { before: "^password.*pam_deny.so",
+Ansible/LDAP/tasks/main.yml:        line: "auth        sufficient    pam_sss.so use_first_pass" \}
+Ansible/LDAP/tasks/main.yml:    - \{ before: "^password.*pam_deny.so",
 Ansible/LDAP/tasks/main.yml:        regexp: "^password.*pam_sss.so",
 Ansible/LDAP/tasks/main.yml:        line: "password    sufficient    pam_sss.so use_authtok" }
-Ansible/LDAP/tasks/main.yml:        line: "auth        sufficient    pam_sss.so use_first_pass" }
-Ansible/LDAP/tasks/main.yml:    - { before: "^password.*pam_deny.so",
+Ansible/LDAP/tasks/main.yml:        line: "auth        sufficient    pam_sss.so use_first_pass" \}
+Ansible/LDAP/tasks/main.yml:    - \{ before: "^password.*pam_deny.so",
 Ansible/LDAP/tasks/main.yml:        regexp: "^password.*pam_sss.so",
-Ansible/LDAP/tasks/main.yml:        line: "password    sufficient    pam_sss.so use_authtok" }
+Ansible/LDAP/tasks/main.yml:        line: "password    sufficient    pam_sss.so use_authtok" \}
 Ansible/LDAP/tasks/main.yml:- name: Allow/Disallow password authentication in SSHD config for users
 Ansible/LDAP/tasks/main.yml:      PasswordAuthentication yes
-Ansible/LDAP/tasks/main.yml:    state: "{{ 'present' if system_ldap_allow_passwordauth_in_sshd and system_ldap_access_filter_users else 'absent' }}"
+Ansible/LDAP/tasks/main.yml:    state: "\{\{ 'present' if system_ldap_allow_passwordauth_in_sshd and system_ldap_access_filter_users else 'absent' \}\}"
 Ansible/LDAP/tasks/main.yml:- name: Allow/Disallow password authentication in SSHD config for groups
 Ansible/LDAP/tasks/main.yml:      PasswordAuthentication yes
-Ansible/LDAP/tasks/main.yml:    state: "{{ 'present' if system_ldap_allow_passwordauth_in_sshd and system_ldap_access_unix_groups else 'absent' }}"
+Ansible/LDAP/tasks/main.yml:    state: "\{\{ 'present' if system_ldap_allow_passwordauth_in_sshd and system_ldap_access_unix_groups else 'absent' \}\}"
 Ansible/LDAP/defaults/main.yml:system_ldap_allow_passwordauth_in_sshd: false
 Ansible/LDAP/defaults/main.yml:system_ldap_bind_password:
 Ansible/LDAP/README.md:|`system_ldap_bind_password`|`sunrise`|The authentication token of the default bind DN. Only clear text passwords are currently supported.|
@@ -449,7 +449,7 @@ Ansible/LDAP/.bin/diff_vault:CONTENT="$(ansible-vault view "$1" --vault-password
 Ansible/LDAP/TODO.md:- Change LDAP admin password after build -[COMPLETE]
 Ansible/LDAP/templates/sssd.conf.j2:chpass_provider = ldap
 Ansible/LDAP/templates/sssd.conf.j2:ldap_default_authtok_type = password
-Ansible/LDAP/templates/sssd.conf.j2:ldap_default_authtok = {{ system_ldap_bind_password }}
+Ansible/LDAP/templates/sssd.conf.j2:ldap_default_authtok = \{\{ system_ldap_bind_password \}\}
 Ansible/LDAP/templates/sssd.conf.j2:cache_credentials = True
 Ansible/LDAP/.travis.yml:  - echo "$VAULT_PASSWORD" > .vault_password
 Ansible/LDAP/.travis.yml:  - ansible-playbook tests/travis.yml -i localhost, --vault-password-file .vault_password --syntax-check
@@ -489,11 +489,11 @@ Checando uno por uno:
 **Ansible/PWM/defaults/main.yml**
 
 ```shell
-pwm_run_dir: "{{ lookup('env', 'PWD') }}"
+pwm_run_dir: "\{\{ lookup('env', 'PWD') \}\}"
 
 pwm_hostname: authority.htb.corp
-pwm_http_port: "{{ http_port }}"
-pwm_https_port: "{{ https_port }}"
+pwm_http_port: "\{\{ http_port \}\}"
+pwm_https_port: "\{\{ https_port \}\}"
 pwm_https_enable: true
 
 pwm_require_ssl: false
